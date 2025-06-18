@@ -1,12 +1,17 @@
-import pdfkit
-from jinja2 import Environment, FileSystemLoader
-import tempfile
+from docx import Document
 
-def generate_resume_pdf(user_data):
-    env = Environment(loader=FileSystemLoader('templates'))
-    template = env.get_template('resume_template.html')
-    html_out = template.render(user_data)
+def generate_resume_docx(user_data):
+    doc = Document()
+    doc.add_heading(user_data["name"], level=1)
+    doc.add_paragraph(f"📧 Email: {user_data['email']}")
+    doc.add_paragraph(f"📞 Telefon: {user_data['phone']}")
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as pdf_file:
-        pdfkit.from_string(html_out, pdf_file.name)
-        return pdf_file.name
+    doc.add_heading("🛠 Ko‘nikmalar", level=2)
+    doc.add_paragraph(user_data["skills"])
+
+    doc.add_heading("💼 Ish tajribasi", level=2)
+    doc.add_paragraph(user_data["experience"])
+
+    filename = f"{user_data['name'].replace(' ', '_')}_resume.docx"
+    doc.save(filename)
+    return filename
