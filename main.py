@@ -1,28 +1,21 @@
-
-import logging, os
-from telegram import Update
-from telegram.ext import (
-    Application, CommandHandler, MessageHandler, filters,
-    ConversationHandler, ContextTypes
-)
-from resume_generator import generate_resume_pdf
-from database import save_user
-from admin import admin_commands
+import os
 from dotenv import load_dotenv
+from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from telegram.ext import (
+    Application, CommandHandler, MessageHandler,
+    ContextTypes, ConversationHandler, filters
+)
+from resume_generator import generate_resume_docx
 
 load_dotenv()
+TOKEN = os.getenv("BOT_TOKEN")
+ADMIN_ID = int(os.getenv("ADMIN_ID"))
 
-# Logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-# Steps
 NAME, EMAIL, PHONE, SKILLS, EXPERIENCE = range(5)
-
 user_data = {}
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("📝 Rezyume tayyorlash uchun ismingizni kiriting:")
+    await update.message.reply_text("👋 Salom! Men sizga rezyume tuzishda yordam beraman.\n\nIsmingizni kiriting:")
     return NAME
 
 async def name_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -37,20 +30,20 @@ async def email_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def phone_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data["phone"] = update.message.text
-    await update.message.reply_text("💡 Ko‘nikmalaringizni kiriting (vergul bilan):")
+    await update.message.reply_text("🛠 Ko‘nikmalaringizni yozing:")
     return SKILLS
 
 async def skills_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data["skills"] = update.message.text
-    await update.message.reply_text("💼 Ish tajribangizni qisqacha yozing:")
+    await update.message.reply_text("💼 Ish tajribangiz haqida yozing:")
     return EXPERIENCE
 
 async def experience_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data["experience"] = update.message.text
-    pdf_file = generate_resume_pdf(user_data)
-
-    await update.message.reply_document(pdf_file, caption="✅ Rezyume tayyor bo‘ldi.")
-    save_user(update.effective_user.id)
+    filename = generate_resume_docx(user_data)
+    await update.message.reply_document(open(filename, "rb"))
+    os.remove(filename)
+    await update.message.reply_text("✅ Rezyume tayyor! Yana rezyume yaratish uchun /start buyrug‘ini bosing.")
     return ConversationHandler.END
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -58,7 +51,7 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 def main():
-    app = Application.builder().token(os.getenv("BOT_TOKEN")).build()
+    app = Application.builder().token(TOKEN).build()
 
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
@@ -72,7 +65,6 @@ def main():
         fallbacks=[CommandHandler("cancel", cancel)],
     )
 
-    app.add_handlers(admin_commands)
     app.add_handler(conv_handler)
     app.run_polling()
 
