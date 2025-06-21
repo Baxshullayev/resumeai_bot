@@ -14,26 +14,23 @@ ADMIN_ID = int(os.getenv("ADMIN_ID"))
 (
     NAME, EMAIL, PHONE,
     SKILLS, EXPERIENCE,
-    EDUCATION, LANGUAGES, OBJECTIVE
-) = range(8)
+    EDUCATION, LANGUAGES, OBJECTIVE, OFFICE_SKILLS
+) = range(9)
 
 user_data = {}
 
-# /start yoki tugma
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [["📝 Rezyume yaratish"], ["ℹ️ Info", "📞 Kontakt"]]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     await update.message.reply_text("👋 Salom! Rezyume yaratish uchun ismingizni yozing:", reply_markup=reply_markup)
     return NAME
 
-# Info / Contact
 async def info_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("ℹ️ Bu bot professional .docx rezyume yaratadi. /start bosib sinab ko‘ring.")
 
 async def contact_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("📞 Aloqa: @yourusername")
 
-# Qadamlar
 async def name_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data["name"] = update.message.text
     await update.message.reply_text("✉️ Email manzilingiz?")
@@ -71,13 +68,17 @@ async def language_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def objective_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data["objective"] = update.message.text
+    await update.message.reply_text("📊 Qaysi Office dasturlari bilan ishlay olasiz? (masalan: Word – yaxshi, Excel – mukammal)")
+    return OFFICE_SKILLS
+
+async def office_skills_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_data["office"] = update.message.text
     filename = generate_resume_docx(user_data)
     await update.message.reply_document(open(filename, "rb"))
     os.remove(filename)
     await update.message.reply_text("✅ Rezyume tayyor! /start buyrug‘ini qayta bosishingiz mumkin.")
     return ConversationHandler.END
 
-# Bekor qilish
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("❌ Bekor qilindi.", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
@@ -99,6 +100,7 @@ def main():
             EDUCATION: [MessageHandler(filters.TEXT & ~filters.COMMAND, education_handler)],
             LANGUAGES: [MessageHandler(filters.TEXT & ~filters.COMMAND, language_handler)],
             OBJECTIVE: [MessageHandler(filters.TEXT & ~filters.COMMAND, objective_handler)],
+            OFFICE_SKILLS: [MessageHandler(filters.TEXT & ~filters.COMMAND, office_skills_handler)],
         },
         fallbacks=[CommandHandler("cancel", cancel)],
     )
