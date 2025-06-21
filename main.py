@@ -167,4 +167,5 @@ def main():
             LANGUAGES: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_languages)],
             OFFICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_office)],
             PHOTO_DECISION: [CallbackQueryHandler(photo_decision)],
-            PHOTO_UPLOAD: [MessageHandler(filters.P]()_
+            PHOTO_UPLOAD: [MessageHandler(filters.PHOTO, photo_upload)],
+
