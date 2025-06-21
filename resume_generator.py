@@ -75,4 +75,3 @@ def generate_resume_docx(user_data):
     filename = f"{user_data['name'].replace(' ', '_')}_resume.docx"
     doc.save(filename)
     return filename
-s
