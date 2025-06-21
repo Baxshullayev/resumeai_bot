@@ -4,25 +4,24 @@ from docx.shared import Pt, RGBColor
 def generate_resume_docx(user_data):
     doc = Document()
 
-    # Ism — markazda
+    # 🧑‍💼 Ism — markazda
     name = doc.add_heading(user_data["name"], level=1)
-    name.alignment = 1
+    name.alignment = 1  # center
 
-    # Email & telefon
+    # 📧 Email & telefon
     contact = doc.add_paragraph()
     contact_run = contact.add_run(f"📧 {user_data['email']} | 📞 {user_data['phone']}")
     contact_run.font.size = Pt(10)
     contact.alignment = 1
 
-    # Ko‘nikmalar
+    # 🛠 Ko‘nikmalar
     doc.add_heading("🛠 Ko‘nikmalar", level=2).runs[0].font.color.rgb = RGBColor(0, 102, 204)
     for skill in user_data["skills"].split(','):
         doc.add_paragraph(skill.strip(), style='List Bullet')
 
-    # Ish tajribasi
+    # 💼 Ish tajribasi
     doc.add_heading("💼 Ish tajribasi", level=2).runs[0].font.color.rgb = RGBColor(0, 102, 204)
 
-    # Har bir tajribani satr bo‘yicha qayta ishlash
     for line in user_data["experience"].split('\n'):
         parts = [p.strip() for p in line.split(',')]
         if len(parts) == 3:
