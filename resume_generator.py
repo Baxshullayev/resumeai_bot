@@ -49,6 +49,11 @@ def generate_resume_docx(user_data):
     for lang in user_data["languages"].split('\n'):
         doc.add_paragraph(lang.strip(), style='List Bullet')
 
+    # Office
+    add_section("📊 Office dasturlari")
+    for office_item in user_data["office"].split(','):
+        doc.add_paragraph(office_item.strip(), style='List Bullet')
+
     filename = f"{user_data['name'].replace(' ', '_')}_resume.docx"
     doc.save(filename)
     return filename
