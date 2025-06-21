@@ -1,117 +1,170 @@
+import logging
 import os
-from dotenv import load_dotenv
-from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from telegram import (
+    Update,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    InputFile
+)
 from telegram.ext import (
-    Application, CommandHandler, MessageHandler,
-    ContextTypes, ConversationHandler, filters
+    Application,
+    CommandHandler,
+    MessageHandler,
+    filters,
+    ContextTypes,
+    ConversationHandler,
+    CallbackQueryHandler,
 )
 from resume_generator import generate_resume_docx
+from dotenv import load_dotenv
 
 load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
-ADMIN_ID = int(os.getenv("ADMIN_ID"))
 
+# Foydalanuvchi ma'lumotlarini saqlash
+USER_DATA = {}
+PHOTO_PATHS = {}
+
+# Bosqichlar
 (
-    NAME, EMAIL, PHONE,
-    SKILLS, EXPERIENCE,
-    EDUCATION, LANGUAGES, OBJECTIVE, OFFICE_SKILLS
-) = range(9)
+    NAME,
+    EMAIL,
+    PHONE,
+    OBJECTIVE,
+    EDUCATION,
+    EXPERIENCE,
+    SKILLS,
+    LANGUAGES,
+    OFFICE,
+    PHOTO_DECISION,
+    PHOTO_UPLOAD
+) = range(11)
 
-user_data = {}
+# Logger sozlash
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
+
+# /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [["📝 Rezyume yaratish"], ["ℹ️ Info", "📞 Kontakt"]]
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    await update.message.reply_text("👋 Salom! Rezyume yaratish uchun ismingizni yozing:", reply_markup=reply_markup)
+    await update.message.reply_text("📝 Rezyume yaratish uchun ismingizni kiriting:")
+    USER_DATA[update.effective_chat.id] = {}
     return NAME
 
-async def info_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("ℹ️ Bu bot professional .docx rezyume yaratadi. /start bosib sinab ko‘ring.")
 
-async def contact_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("📞 Aloqa: @yourusername")
-
-async def name_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_data["name"] = update.message.text
-    await update.message.reply_text("✉️ Email manzilingiz?")
+async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    USER_DATA[update.effective_chat.id]["name"] = update.message.text
+    await update.message.reply_text("✉️ Email manzilingizni kiriting:")
     return EMAIL
 
-async def email_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_data["email"] = update.message.text
-    await update.message.reply_text("📞 Telefon raqamingiz?")
+
+async def get_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    USER_DATA[update.effective_chat.id]["email"] = update.message.text
+    await update.message.reply_text("📞 Telefon raqamingizni kiriting:")
     return PHONE
 
-async def phone_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_data["phone"] = update.message.text
-    await update.message.reply_text("🛠 Ko‘nikmalaringizni vergul bilan yozing:")
-    return SKILLS
 
-async def skills_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_data["skills"] = update.message.text
-    await update.message.reply_text("💼 Ish tajribangiz (kompaniya, yillar, lavozim):")
-    return EXPERIENCE
-
-async def experience_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_data["experience"] = update.message.text
-    await update.message.reply_text("🎓 Ta’lim (Universitet, yillar, yo‘nalish):")
-    return EDUCATION
-
-async def education_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_data["education"] = update.message.text
-    await update.message.reply_text("🌐 Biladigan tillaringiz (til — daraja):")
-    return LANGUAGES
-
-async def language_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_data["languages"] = update.message.text
+async def get_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    USER_DATA[update.effective_chat.id]["phone"] = update.message.text
     await update.message.reply_text("🎯 Maqsadingizni yozing:")
     return OBJECTIVE
 
-async def objective_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_data["objective"] = update.message.text
-    await update.message.reply_text("📊 Qaysi Office dasturlari bilan ishlay olasiz? (masalan: Word – yaxshi, Excel – mukammal)")
-    return OFFICE_SKILLS
 
-async def office_skills_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_data["office"] = update.message.text
-    filename = generate_resume_docx(user_data)
-    await update.message.reply_document(open(filename, "rb"))
-    os.remove(filename)
-    await update.message.reply_text("✅ Rezyume tayyor! /start buyrug‘ini qayta bosishingiz mumkin.")
+async def get_objective(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    USER_DATA[update.effective_chat.id]["objective"] = update.message.text
+    await update.message.reply_text("🎓 Ta’lim ma’lumotlaringizni kiriting (yiliga ajratib):")
+    return EDUCATION
+
+
+async def get_education(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    USER_DATA[update.effective_chat.id]["education"] = update.message.text
+    await update.message.reply_text("💼 Ish tajribangizni kiriting:\n\nMisol: Kompaniya, 2022-2023, Lavozim")
+    return EXPERIENCE
+
+
+async def get_experience(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    USER_DATA[update.effective_chat.id]["experience"] = update.message.text
+    await update.message.reply_text("🛠 Ko‘nikmalaringizni kiriting (vergul bilan):")
+    return SKILLS
+
+
+async def get_skills(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    USER_DATA[update.effective_chat.id]["skills"] = update.message.text
+    await update.message.reply_text("🌐 Tillarni yozing (har biri yangi qatorda):")
+    return LANGUAGES
+
+
+async def get_languages(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    USER_DATA[update.effective_chat.id]["languages"] = update.message.text
+    await update.message.reply_text("📊 Office dasturlari bilan ishlay olish ko‘nikmalaringizni kiriting (vergul bilan):")
+    return OFFICE
+
+
+async def get_office(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    USER_DATA[update.effective_chat.id]["office"] = update.message.text
+
+    # Inline keyboard bilan so‘rov
+    keyboard = [
+        [
+            InlineKeyboardButton("🖼 Rasm yuklayman", callback_data="yes_photo"),
+            InlineKeyboardButton("🚫 Rasmsiz", callback_data="no_photo")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text("3x4 rasmni yuklamoqchimisiz?", reply_markup=reply_markup)
+    return PHOTO_DECISION
+
+
+async def photo_decision(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    if query.data == "yes_photo":
+        await query.edit_message_text("Iltimos, 3x4 rasmni yuboring:")
+        return PHOTO_UPLOAD
+    else:
+        return await generate_resume(query.message.chat_id, context)
+
+
+async def photo_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    photo_file = await update.message.photo[-1].get_file()
+    path = f"{chat_id}_photo.jpg"
+    await photo_file.download_to_drive(path)
+    PHOTO_PATHS[chat_id] = path
+    return await generate_resume(chat_id, context)
+
+
+async def generate_resume(chat_id, context):
+    user_data = USER_DATA.get(chat_id, {})
+    photo_path = PHOTO_PATHS.get(chat_id)
+    file_path = generate_resume_docx(user_data, photo_path)
+
+    await context.bot.send_document(chat_id=chat_id, document=InputFile(file_path))
+    await context.bot.send_message(chat_id=chat_id, text="✅ Rezyume tayyor!")
     return ConversationHandler.END
 
+
+# Cancel
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("❌ Bekor qilindi.", reply_markup=ReplyKeyboardRemove())
+    await update.message.reply_text("❌ Jarayon bekor qilindi.")
     return ConversationHandler.END
+
 
 def main():
     app = Application.builder().token(TOKEN).build()
 
-    conv_handler = ConversationHandler(
-        entry_points=[
-            CommandHandler("start", start),
-            MessageHandler(filters.Regex("^(📝 Rezyume yaratish)$"), start)
-        ],
+    conv = ConversationHandler(
+        entry_points=[CommandHandler("start", start)],
         states={
-            NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, name_handler)],
-            EMAIL: [MessageHandler(filters.TEXT & ~filters.COMMAND, email_handler)],
-            PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, phone_handler)],
-            SKILLS: [MessageHandler(filters.TEXT & ~filters.COMMAND, skills_handler)],
-            EXPERIENCE: [MessageHandler(filters.TEXT & ~filters.COMMAND, experience_handler)],
-            EDUCATION: [MessageHandler(filters.TEXT & ~filters.COMMAND, education_handler)],
-            LANGUAGES: [MessageHandler(filters.TEXT & ~filters.COMMAND, language_handler)],
-            OBJECTIVE: [MessageHandler(filters.TEXT & ~filters.COMMAND, objective_handler)],
-            OFFICE_SKILLS: [MessageHandler(filters.TEXT & ~filters.COMMAND, office_skills_handler)],
-        },
-        fallbacks=[CommandHandler("cancel", cancel)],
-    )
-
-    app.add_handler(conv_handler)
-    app.add_handler(CommandHandler("info", info_handler))
-    app.add_handler(CommandHandler("contact", contact_handler))
-    app.add_handler(MessageHandler(filters.Regex("^(ℹ️ Info)$"), info_handler))
-    app.add_handler(MessageHandler(filters.Regex("^(📞 Kontakt)$"), contact_handler))
-
-    app.run_polling()
-
-if __name__ == "__main__":
-    main()
+            NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_name)],
+            EMAIL: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_email)],
+            PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_phone)],
+            OBJECTIVE: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_objective)],
+            EDUCATION: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_education)],
+            EXPERIENCE: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_experience)],
+            SKILLS: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_skills)],
+            LANGUAGES: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_languages)],
+            OFFICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_office)],
+            PHOTO_DECISION: [CallbackQueryHandler(photo_decision)],
+            PHOTO_UPLOAD: [MessageHandler(filters.P]()_
