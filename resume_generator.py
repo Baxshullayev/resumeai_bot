@@ -1,7 +1,8 @@
 from docx import Document
-from docx.shared import Pt, RGBColor
+from docx.shared import Inches, Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
+import os
 
 def set_font(run, size=12, bold=False):
     run.font.name = 'Garamond'
@@ -9,67 +10,67 @@ def set_font(run, size=12, bold=False):
     run.font.size = Pt(size)
     run.bold = bold
 
-def generate_resume_docx(user_data):
+def generate_resume_docx(user_data, photo_path=None):
     doc = Document()
 
-    # Ism (sarlavha)
-    name = doc.add_heading(level=0)
-    name_run = name.add_run(user_data['name'])
-    set_font(name_run, size=22, bold=True)
-    name.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    # 1x2 jadval: chap (matn), o‘ng (rasm)
+    table = doc.add_table(rows=1, cols=2)
+    table.autofit = False
+    table.columns[0].width = Inches(4.5)
+    table.columns[1].width = Inches(2.0)
 
-    # Aloqa (email, telefon)
-    contact = doc.add_paragraph()
-    contact_run = contact.add_run(f"📧 {user_data['email']} | 📞 {user_data['phone']}")
-    set_font(contact_run, size=10)
-    contact.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    # Chap qism (asosiy matnlar)
+    cell_left = table.cell(0, 0)
 
-    # Bo‘lim nomlarini yozish uchun funksiyasi
-    def add_section(title):
-        p = doc.add_paragraph()
-        run = p.add_run(title)
-        set_font(run, size=14, bold=True)
-        run.font.color.rgb = RGBColor(0, 102, 204)
+    def add_paragraph_to_cell(cell, text, size=12, bold=False):
+        para = cell.add_paragraph()
+        run = para.add_run(text)
+        set_font(run, size=size, bold=bold)
+
+    # Ism
+    add_paragraph_to_cell(cell_left, user_data['name'], size=22, bold=True)
+
+    # Aloqa
+    add_paragraph_to_cell(cell_left, f"📧 {user_data['email']} | 📞 {user_data['phone']}", size=10)
 
     # 🎯 Maqsad
-    add_section("🎯 Maqsad")
-    p = doc.add_paragraph(user_data['objective'])
-    set_font(p.runs[0], size=12)
+    add_paragraph_to_cell(cell_left, "\n🎯 Maqsad", size=14, bold=True)
+    add_paragraph_to_cell(cell_left, user_data['objective'])
 
     # 🎓 Ta’lim
-    add_section("🎓 Ta’lim")
+    add_paragraph_to_cell(cell_left, "\n🎓 Ta’lim", size=14, bold=True)
     for line in user_data['education'].split('\n'):
-        p = doc.add_paragraph(line)
-        set_font(p.runs[0], size=12)
+        add_paragraph_to_cell(cell_left, line)
 
     # 💼 Ish tajribasi
-    add_section("💼 Ish tajribasi")
-    for line in user_data["experience"].split('\n'):
+    add_paragraph_to_cell(cell_left, "\n💼 Ish tajribasi", size=14, bold=True)
+    for line in user_data['experience'].split('\n'):
         parts = [p.strip() for p in line.split(',')]
         if len(parts) == 3:
             company, years, role = parts
-            company_paragraph = doc.add_paragraph(f"🏢 {company} ({years})", style='Heading 3')
-            set_font(company_paragraph.runs[0], size=12, bold=True)
-            role_paragraph = doc.add_paragraph(role)
-            set_font(role_paragraph.runs[0], size=12)
+            add_paragraph_to_cell(cell_left, f"🏢 {company} ({years})", bold=True)
+            add_paragraph_to_cell(cell_left, role)
 
     # 🛠 Ko‘nikmalar
-    add_section("🛠 Ko‘nikmalar")
-    for skill in user_data["skills"].split(','):
-        p = doc.add_paragraph(skill.strip(), style='List Bullet')
-        set_font(p.runs[0], size=12)
+    add_paragraph_to_cell(cell_left, "\n🛠 Ko‘nikmalar", size=14, bold=True)
+    for skill in user_data['skills'].split(','):
+        add_paragraph_to_cell(cell_left, f"• {skill.strip()}")
 
     # 🌐 Tillar
-    add_section("🌐 Tillar")
-    for lang in user_data["languages"].split('\n'):
-        p = doc.add_paragraph(lang.strip(), style='List Bullet')
-        set_font(p.runs[0], size=12)
+    add_paragraph_to_cell(cell_left, "\n🌐 Tillar", size=14, bold=True)
+    for lang in user_data['languages'].split('\n'):
+        add_paragraph_to_cell(cell_left, f"• {lang.strip()}")
 
     # 📊 Office dasturlari
-    add_section("📊 Office dasturlari")
-    for office_item in user_data["office"].split(','):
-        p = doc.add_paragraph(office_item.strip(), style='List Bullet')
-        set_font(p.runs[0], size=12)
+    add_paragraph_to_cell(cell_left, "\n📊 Office dasturlari", size=14, bold=True)
+    for off in user_data['office'].split(','):
+        add_paragraph_to_cell(cell_left, f"• {off.strip()}")
+
+    # Rasmni o‘ng tomonga qo‘shish
+    if photo_path and os.path.exists(photo_path):
+        cell_right = table.cell(0, 1)
+        cell_right.paragraphs[0].add_run().add_picture(photo_path, width=Inches(2))
+        cell_right.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
 
     # Faylni saqlash
     filename = f"{user_data['name'].replace(' ', '_')}_resume.docx"
